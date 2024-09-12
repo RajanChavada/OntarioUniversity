@@ -32,7 +32,7 @@ if os.path.exists(output_file):
 if not os.path.exists(output_file): 
     with open(output_file, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        writer.writerow(["Program Name", "University Name"])
+        writer.writerow(["Program Name", "University Name", "Degree", "Program Code", "Grade Range", "Prerequisites"])
 
 def close_popup():
     try:
@@ -45,6 +45,94 @@ def close_popup():
     except (TimeoutException, NoSuchElementException):
         print("No pop-up found or unable to close")
 
+def scroll_and_wait():
+    last_height = browser.execute_script("return document.body.scrollHeight")
+    while True:
+        browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(random.uniform(2, 4))  # Random wait between 2-4 seconds
+        close_popup()  # Check for pop-up after each scroll
+        new_height = browser.execute_script("return document.body.scrollHeight")
+        if new_height == last_height:
+            break
+        last_height = new_height
+
+def scrape_requirements():
+    try: 
+        overview_tab = WebDriverWait(browser, 10).until(
+            EC.element_to_be_clickable((By.LINK_TEXT, 'Overview'))
+        ) 
+        overview_tab.click()
+        time.sleep(5)
+        
+        degree = browser.find_element(By.XPATH, "//dt[text()='Degree']/following-sibling::dd").text.strip()
+        program_code = browser.find_element(By.XPATH, "//dt[text()='OUAC Program Code']/following-sibling::dd").text.strip()
+        grade_range = browser.find_element(By.XPATH, "//dt[text()='Grade Range']/following-sibling::dd").text.strip()
+
+        requirements_tab = WebDriverWait(browser, 10).until(
+            EC.element_to_be_clickable((By.LINK_TEXT, 'Requirements'))
+        ) 
+        requirements_tab.click() 
+        time.sleep(5) # wait for the load 
+
+        # extract the grade and course requirements 
+        prereq = browser.find_element(By.CSS_SELECTOR, 'h4.tabbed-subsection-heading ul').text.strip()
+
+        return degree, program_code, grade_range, prereq
+    
+    except Exception as e: 
+        print(f"Failed to extract program information: {e}")
+        return [""] * 4
+
+def scrape_page():
+    # Find the elements
+    program_elements = browser.find_elements(By.CSS_SELECTOR, 'h2.result-heading a')
+    university_elements = browser.find_elements(By.CSS_SELECTOR, 'h3.result-subheading a')
+    
+    print(f"Found {len(program_elements)} programs on this page")
+    
+    new_programs = set()
+    rows_to_write = [] 
+
+    for index, (program_element, university_element) in enumerate(zip(program_elements, university_elements)):
+        program = program_element.text.strip()
+        university = university_element.text.strip()
+
+        print(f"Processing program {index + 1}: {program} at {university}")
+
+        if program and program not in existing_programs:
+            print(f"New program found: {program}")
+            # Store the current window handle
+            main_window = browser.current_window_handle
+
+            # Get the program link
+            program_link = program_element.get_attribute('href')
+            print(f"Opening link: {program_link}")
+
+            # Open the program link in a new tab
+            browser.execute_script("window.open(arguments[0]);", program_link)
+            
+            # Switch to the new tab
+            browser.switch_to.window(browser.window_handles[-1])
+            print("Switched to program page")
+
+            # Scrape all the details from the overview and requirements tabs
+            degree, program_code, grade_range, prereq = scrape_requirements()
+
+            print(f"Scraped details: Degree: {degree}, Code: {program_code}, Grade Range: {grade_range}")
+
+            # Add new programs and associated information to the list
+            new_programs.add(program)
+            rows_to_write.append([program, university, degree, program_code, grade_range, prereq])
+
+            # Close the tab and switch back to the main window
+            browser.close()
+            browser.switch_to.window(main_window)
+            print("Closed program page and switched back to main page")
+        else:
+            print(f"Program already exists or is empty, skipping: {program}")
+
+    return new_programs, rows_to_write
+
 try:
     browser.get("https://www.ouinfo.ca/programs/all/?sort=university&search=")
     time.sleep(5)  # Wait for initial load
@@ -52,53 +140,43 @@ try:
     # Close the pop-up if it appears
     close_popup()
 
-    # Function to scroll and wait for new content
-    def scroll_and_wait():
-        last_height = browser.execute_script("return document.body.scrollHeight")
-        while True:
-            browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(random.uniform(2, 4))  # Random wait between 2-4 seconds
-            close_popup()  # Check for pop-up after each scroll
-            new_height = browser.execute_script("return document.body.scrollHeight")
-            if new_height == last_height:
-                break
-            last_height = new_height
+    all_new_programs = set()
+    all_rows_to_write = []
 
-    # Scroll and wait for all content to load
-    scroll_and_wait()
+    page_number = 1
+    while True:
+        print(f"\nProcessing page {page_number}")
+        # Scroll and wait for all content to load on the current page
+        scroll_and_wait()
 
-    # Explicit wait for elements
-    WebDriverWait(browser, 20).until(
-        EC.presence_of_all_elements_located((By.CSS_SELECTOR, 'h2.result-heading a'))
-    )
+        # Scrape the current page
+        new_programs, rows_to_write = scrape_page()
+        all_new_programs.update(new_programs)
+        all_rows_to_write.extend(rows_to_write)
 
-    # Find the elements
-    program_elements = browser.find_elements(By.CSS_SELECTOR, 'h2.result-heading a')
-    university_elements = browser.find_elements(By.CSS_SELECTOR, 'h3.result-subheading a')
-    
-    # Extract unique programs
-    new_programs = set()
-    rows_to_write = [] 
-
-    for program_element, university_element in zip(program_elements, university_elements):
-        program = program_element.text.strip()
-        university = university_element.text.strip()
-
-        if program and program not in existing_programs:
-            new_programs.add(program)
-            rows_to_write.append([program, university])
+        # Check if there's a next page
+        try:
+            next_button = browser.find_element(By.CSS_SELECTOR, 'a.next-page')
+            next_button.click()
+            print(f"Clicked next page button. Moving to page {page_number + 1}")
+            time.sleep(5)  # Wait for the next page to load
+            close_popup()  # Close any popups that might appear after page change
+            page_number += 1
+        except NoSuchElementException:
+            print("No more pages to scrape")
+            break
 
     # Write new programs to file
     with open(output_file, 'a', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        for row in rows_to_write:
+        for row in all_rows_to_write:
             writer.writerow(row)
 
     # Print results
-    print(f"Total new programs found: {len(new_programs)}")
-    print(f"Total programs in file: {len(existing_programs) + len(new_programs)}")
+    print(f"Total new programs found: {len(all_new_programs)}")
+    print(f"Total programs in file: {len(existing_programs) + len(all_new_programs)}")
     print("First 10 new programs:")
-    print(list(new_programs)[:10])
+    print(list(all_new_programs)[:10])
 
 finally:
     browser.quit()
