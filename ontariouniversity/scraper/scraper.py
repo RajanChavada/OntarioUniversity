@@ -20,6 +20,9 @@ browser.implicitly_wait(10)  # Set implicit wait
 # File to store programs
 output_file = 'ontario_university_programs.csv'
 
+# Define column titles
+column_titles = ["Program Name", "University Name", "Degree", "Program Code", "Grade Range", "Prerequisites"]
+
 # Load existing programs if file exists
 existing_programs = set()
 if os.path.exists(output_file):
@@ -32,7 +35,7 @@ if os.path.exists(output_file):
 if not os.path.exists(output_file): 
     with open(output_file, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        writer.writerow(["Program Name", "University Name", "Degree", "Program Code", "Grade Range", "Prerequisites"])
+        writer.writerow(column_titles)
 
 def close_popup():
     try:
@@ -58,30 +61,41 @@ def scroll_and_wait():
 
 def scrape_requirements():
     try: 
+        # Switch to the Overview tab if not already active
         overview_tab = WebDriverWait(browser, 10).until(
             EC.element_to_be_clickable((By.LINK_TEXT, 'Overview'))
         ) 
-        overview_tab.click()
-        time.sleep(5)
+        if "is-active" not in overview_tab.get_attribute("class"):
+            overview_tab.click()
+            time.sleep(3)  # Wait for the tab to load
         
+        # Scrape overview information
         degree = browser.find_element(By.XPATH, "//dt[text()='Degree']/following-sibling::dd").text.strip()
         program_code = browser.find_element(By.XPATH, "//dt[text()='OUAC Program Code']/following-sibling::dd").text.strip()
         grade_range = browser.find_element(By.XPATH, "//dt[text()='Grade Range']/following-sibling::dd").text.strip()
 
+        # Switch to the Requirements tab
         requirements_tab = WebDriverWait(browser, 10).until(
             EC.element_to_be_clickable((By.LINK_TEXT, 'Requirements'))
         ) 
-        requirements_tab.click() 
-        time.sleep(5) # wait for the load 
+        if "is-active" not in requirements_tab.get_attribute("class"):
+            requirements_tab.click()
+            time.sleep(3)  # Wait for the tab to load 
 
-        # extract the grade and course requirements 
-        prereq = browser.find_element(By.CSS_SELECTOR, 'h4.tabbed-subsection-heading ul').text.strip()
+        # Scrape prerequisites (correct selector for list inside tabbed section)
+        prereq_list = browser.find_elements(By.CSS_SELECTOR, ".tabbed-subsection ul li")
+        prereq = ", ".join([li.text.strip() for li in prereq_list])
 
         return degree, program_code, grade_range, prereq
     
     except Exception as e: 
         print(f"Failed to extract program information: {e}")
         return [""] * 4
+
+def write_to_csv(rows):
+    with open(output_file, 'a', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerows(rows)
 
 def scrape_page():
     # Find the elements
@@ -109,20 +123,25 @@ def scrape_page():
             print(f"Opening link: {program_link}")
 
             # Open the program link in a new tab
-            browser.execute_script("window.open(arguments[0]);", program_link)
+            browser.execute_script("window.open(arguments[0], '_blank');", program_link)
             
-            # Switch to the new tab
+            # Wait for the new tab to open and switch to it
+            WebDriverWait(browser, 10).until(EC.number_of_windows_to_be(2))
             browser.switch_to.window(browser.window_handles[-1])
             print("Switched to program page")
 
             # Scrape all the details from the overview and requirements tabs
             degree, program_code, grade_range, prereq = scrape_requirements()
 
-            print(f"Scraped details: Degree: {degree}, Code: {program_code}, Grade Range: {grade_range}")
+            print(f"Scraped details: Degree: {degree}, Code: {program_code}, Grade Range: {grade_range}, prereq: {prereq}")
 
             # Add new programs and associated information to the list
             new_programs.add(program)
             rows_to_write.append([program, university, degree, program_code, grade_range, prereq])
+
+            # Write the new data to the CSV file
+            if rows_to_write:
+                write_to_csv(rows_to_write)
 
             # Close the tab and switch back to the main window
             browser.close()
@@ -131,7 +150,7 @@ def scrape_page():
         else:
             print(f"Program already exists or is empty, skipping: {program}")
 
-    return new_programs, rows_to_write
+    return new_programs
 
 try:
     browser.get("https://www.ouinfo.ca/programs/all/?sort=university&search=")
@@ -141,8 +160,6 @@ try:
     close_popup()
 
     all_new_programs = set()
-    all_rows_to_write = []
-
     page_number = 1
     while True:
         print(f"\nProcessing page {page_number}")
@@ -150,9 +167,8 @@ try:
         scroll_and_wait()
 
         # Scrape the current page
-        new_programs, rows_to_write = scrape_page()
+        new_programs = scrape_page()
         all_new_programs.update(new_programs)
-        all_rows_to_write.extend(rows_to_write)
 
         # Check if there's a next page
         try:
@@ -165,12 +181,6 @@ try:
         except NoSuchElementException:
             print("No more pages to scrape")
             break
-
-    # Write new programs to file
-    with open(output_file, 'a', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
-        for row in all_rows_to_write:
-            writer.writerow(row)
 
     # Print results
     print(f"Total new programs found: {len(all_new_programs)}")

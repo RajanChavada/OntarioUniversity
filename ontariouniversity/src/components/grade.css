@@ -1,0 +1,15 @@
+div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh; /* Center the form vertically */
+  }
+  
+  input {
+    margin: 10px 0; /* Adds space between the input fields */
+    padding: 10px;
+    width: 200px; /* Set a width for the input fields */
+    text-align: center; /* Center the text inside the input */
+  }
+  
