@@ -1,12 +1,12 @@
 import './App.css';
-import GradeInput from './components/GradeInput'
-
+import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+import Main from "./components/Main"
+import BrowserRouter from "./BrowserRouter"
 
 function App() {
   return (
     <div className="App">
-      <h1>Hello</h1>
-      <GradeInput />
+      <BrowserRouter />
     </div>
   );
 }
