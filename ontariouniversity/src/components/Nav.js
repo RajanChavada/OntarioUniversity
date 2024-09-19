@@ -10,17 +10,11 @@ export default function Nav() {
           MyApp
         </Typography>
         <Box sx={{ display: 'flex' }}>
-          <Button color="inherit" component={Link} to="/">
-            Home
+          <Button color="inherit" component={Link} to="/register">
+            Register
           </Button>
-          <Button color="inherit" component={Link} to="/about">
-            About
-          </Button>
-          <Button color="inherit" component={Link} to="/services">
-            Services
-          </Button>
-          <Button color="inherit" component={Link} to="/contact">
-            Contact
+          <Button color="inherit" component={Link} to="/login">
+            Login
           </Button>
         </Box>
       </Toolbar>

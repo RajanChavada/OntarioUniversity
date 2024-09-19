@@ -12,8 +12,8 @@ export default function BrowserRouter() {
     <Router>
       <Routes>
           <Route path="/register" element={<Register />} />
-          <Route path="/" element={<Login />} />
-          <Route path="/home" element={<Home />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
        </Routes>
     </Router>
   )
