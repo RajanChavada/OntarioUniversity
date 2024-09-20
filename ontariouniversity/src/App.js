@@ -2,12 +2,15 @@ import './App.css';
 import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 import Main from "./components/Main"
 import BrowserRouter from "./BrowserRouter"
+import { AuthProvider } from './components/AuthContext';
 
 function App() {
   return (
-    <div className="App">
-      <BrowserRouter />
-    </div>
+    <AuthProvider>
+      <div className="App">
+        <BrowserRouter />
+      </div>
+    </AuthProvider>
   );
 }
 

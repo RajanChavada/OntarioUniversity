@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { TextField, Button, Box, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { auth } from '../firebase/config';
+import { auth, firestore } from '../firebase/config';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import Nav from './Nav';
 
 export default function Register() {
@@ -38,12 +39,27 @@ export default function Register() {
       return;
     }
 
+    console.log('Attempting to register with:', email);
+    console.log('Auth object:', auth);
+
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      console.log('Starting user creation...');
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      console.log('User created successfully:', userCredential.user);
+
+      console.log('Storing user data in Firestore...');
+      await setDoc(doc(firestore, "users", userCredential.user.uid), {
+        email: userCredential.user.email,
+        createdAt: new Date()
+      });
+      console.log('User data stored successfully');
+
       setRegisterResult(true);
-      navigate('/home'); // Redirect to the home page after registration
+      navigate('/');
     } catch (error) {
-      console.error('Error registering user:', error);
+      console.error('Detailed error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       alert('Error registering user: ' + error.message);
     }
   };

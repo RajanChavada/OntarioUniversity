@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { TextField, Box, Button, Typography, Alert, Snackbar } from '@mui/material';
+import { useAuth } from './AuthContext';
+import { firestore } from '../firebase/config';
+import { doc, setDoc } from 'firebase/firestore';
 
 export default function GradeInput() {
     const [grades, setGrades] = useState(Array(6).fill(''));
     const [alertOpen, setAlertOpen] = useState(false); // For controlling the popup alert
     const [errorMessage, setErrorMessage] = useState(''); // To store the validation message
     const [average, setAverage] = useState(0); // To store the average of grades
-
+    const { user } = useAuth();
 
     // Handle input change for grades
     const handleGradeChange = (index, event) => {
@@ -19,7 +22,7 @@ export default function GradeInput() {
     };
 
     // Handle submit function with validation
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         // Check if any grade field is empty
         if (grades.some((grade) => grade === '')) {
             setErrorMessage('All fields are required. Please fill in all grades.');
@@ -32,8 +35,23 @@ export default function GradeInput() {
         const avg = total / grades.length;
         setAverage(avg); // This sets the state for average but won't be immediately available
 
+        if (user) {
+            try {
+                await setDoc(doc(firestore, "userGrades", user.uid), {
+                    grades: grades,
+                    average: avg,
+                    timestamp: new Date()
+                });
+                setErrorMessage('Grades submitted and saved successfully!');
+            } catch (error) {
+                console.error("Error saving grades: ", error);
+                setErrorMessage('Error saving grades. Please try again.');
+            }
+        } else {
+            setErrorMessage('Grades submitted successfully! (Guest Mode - Not Saved)');
+        }
+
         // Display success message
-        setErrorMessage('Grades submitted successfully!');
         setAlertOpen(true);
 
         // Log the grades and the average
