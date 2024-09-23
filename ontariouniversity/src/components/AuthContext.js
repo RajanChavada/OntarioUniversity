@@ -4,7 +4,9 @@ import { onAuthStateChanged } from 'firebase/auth';
 
 const AuthContext = createContext();
 
+// function to share the state to app.js and home.js
 export function useAuth() {
+  // share the state of the user 
   return useContext(AuthContext);
 }
 

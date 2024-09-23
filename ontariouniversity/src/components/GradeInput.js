@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { TextField, Box, Button, Typography, Alert, Snackbar } from '@mui/material';
 import { useAuth } from './AuthContext';
 import { firestore } from '../firebase/config';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export default function GradeInput() {
     const [grades, setGrades] = useState(Array(6).fill(''));
@@ -10,6 +10,33 @@ export default function GradeInput() {
     const [errorMessage, setErrorMessage] = useState(''); // To store the validation message
     const [average, setAverage] = useState(0); // To store the average of grades
     const { user } = useAuth();
+
+    // fetch grades if available 
+    useEffect(() => {
+        if (user) { // if the user is logged in
+            const fetchGrades = async () => { 
+                try {
+                    const docRef = doc(firestore, "userGrades", user.uid); // grades for userid
+                    const docSnap = await getDoc(docRef); 
+
+                    if (docSnap.exists()) { 
+
+                        const data = docSnap.data(); 
+                        setGrades(data.grades); 
+                        setAverage(data.average); 
+                    }
+                    else { 
+                        console.log("No grades found for this user"); 
+                    }
+                }
+                catch(error) { 
+                    console.log("There was an error fetching the grades ", error); 
+                }
+            }; 
+            fetchGrades(); // call function
+
+        }
+    }, [user]); 
 
     // Handle input change for grades
     const handleGradeChange = (index, event) => {

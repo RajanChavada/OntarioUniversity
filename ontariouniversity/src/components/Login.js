@@ -28,7 +28,7 @@ export default function Login() {
         try {
             const userCredential = await signInWithEmailAndPassword(auth, loginData.email, loginData.password);
             console.log('User logged in successfully:', userCredential.user);
-            navigate('/'); // Redirect to the main page after successful login
+            navigate('/home'); // Redirect to the main page after successful login
         } catch (error) {
             console.error('Login error:', error);
             setError('Invalid email or password. Please try again.');
