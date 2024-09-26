@@ -10,6 +10,7 @@
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
     "firebase": "^10.13.2",
+    "papaparse": "^5.4.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2",
@@ -42,6 +43,7 @@
     ]
   },
   "devDependencies": {
-    "chromedriver": "^128.0.1"
+    "chromedriver": "^128.0.1",
+    "raw-loader": "^4.0.2"
   }
 }

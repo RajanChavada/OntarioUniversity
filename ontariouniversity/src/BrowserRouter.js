@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route} from "react-router-dom"
 import Register from "./components/Register"
 import Login from "./components/Login"
 import Home from "./components/Home"
+import Search from "./components/Search"
 import "./App.css"
 
 
@@ -13,6 +14,7 @@ export default function BrowserRouter() {
           <Route path="/register" element={<Register />} />
           <Route path="/home" element={<Home />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/search" element={<Search />} />
        </Routes>
     </Router>
   )
