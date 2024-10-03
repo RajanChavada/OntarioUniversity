@@ -4,6 +4,7 @@ import { Typography, Button, Box, Container } from '@mui/material';
 import { Link } from 'react-router-dom';
 import Nav from './Nav';
 import GradeInput from './GradeInput';
+import Search from "./Search"
 
 export default function Home() {
   const { user } = useAuth();
@@ -18,8 +19,8 @@ export default function Home() {
           alignItems="center"
           justifyContent="center"
           minHeight="100vh"
-          gap={4}
-          py={4}  // Add some padding to the top and bottom
+          gap={2}
+          py={1}  // Add some padding to the top and bottom
         >
           <Typography variant="h4" component="h1" gutterBottom>
             Welcome to Ontario University Programs
@@ -58,8 +59,8 @@ export default function Home() {
           <Typography variant="h5" component="h2" gutterBottom>
             Enter Your Grades
           </Typography>
-
           <GradeInput />
+          <Search />
 
         </Box>
       </Container>
